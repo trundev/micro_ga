@@ -1,0 +1,21 @@
+[project]
+name = "micro_ga"
+version = "0.0.1.dev0"      # Keep in sync with micro_ga/__init__.py:__version__
+description = "Minimal geometric algebra multi-vector operations"
+readme = "README.md"
+requires-python = ">=3.9.0"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    'Topic :: Software Development',
+    'Topic :: Scientific/Engineering',
+]
+dependencies = ["numpy"]
+
+[project.optional-dependencies]
+# Development deps, installed through `pip install .[dev]`
+dev = ["pytest"]
+
+[build-system]
+requires = ["setuptools>=42", "wheel"]
+build-backend = "setuptools.build_meta"
