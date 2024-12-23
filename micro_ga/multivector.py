@@ -1,8 +1,8 @@
 """Geometric algebra multi-vector basic implementation"""
 import numbers
+from typing import Union
 import numpy as np
 import numpy.typing as npt
-from typing import ForwardRef
 
 #
 # Geometric algebra signature elements (0, +1, or -1)
@@ -15,8 +15,8 @@ SigType = np.int8
 #
 MultTableType = np.int8
 #
-# Bitmask to represent the basis-vectors, included in a multi-vector blade
-# 16-bits allow max of 16 basis-vectors (2**16 == 65536 blades) - ought to be enought!
+# Bit-mask to represent the basis-vectors, included in a multi-vector blade
+# 16-bits allow max of 16 basis-vectors (2**16 == 65536 blades) - ought to be enough!
 #
 BasisBitmaskType = np.uint16
 
@@ -24,36 +24,38 @@ NDSigType = npt.NDArray[SigType]
 NDMultTableType = npt.NDArray[MultTableType]
 NDResultIdxType = npt.NDArray[np.int_]
 
-T_MVector = ForwardRef('MVector')
+# Multi-vector operation `other` argument type
+OtherArg = Union['MVector', int, complex, numbers.Number]
 
 class Cl:
-    """Clifford algebra generator (similar to clifford.Cl())"""
+    """Clifford algebra generator (similar to `clifford.Cl()`)"""
     #
-    # Algebra signature, similar to clifford.Layout.sig
+    # Algebra signature, similar to `clifford.Layout.sig`
     #
     sig: NDSigType
-    # Basis-vector dimensions, similar to clifford.Layout.dims
+    # Basis-vector dimensions, similar to `clifford.Layout.dims`
     dims: int
-    # Multi-vector dimensions, similar to clifford.Layout.gaDims
+    # Multi-vector dimensions, similar to `clifford.Layout.gaDims`
     gaDims: int
     # Blade-name to multi-vector map
-    blades: dict[str, T_MVector]
+    blades: dict[str, 'MVector']
     #
     # Bit-masks for basis-vectors in each multi-vector blade
     #
     _blade_basis_masks: npt.NDArray[BasisBitmaskType]
     # Individual blades, also include 'e1', 'e2', etc.
-    scalar: T_MVector
-    I: T_MVector
+    scalar: 'MVector'
+    I: 'MVector'
 
-    def __init__(self, pos_sig: int, neg_sig: int=0, zero_sig: int=0, *, dtype: type|None=None) -> None:
+    def __init__(self, pos_sig: int, neg_sig: int=0, zero_sig: int=0, *,
+                 dtype: type|None=None) -> None:
         # Build signature
         self.sig = np.array([0] * zero_sig + [1] * pos_sig + [-1] * neg_sig,
                             dtype=SigType)
         self.dims = self.sig.size
-        self.gaDims = 1<<self.dims
+        self.gaDims = 1<<self.dims      # pylint: disable=C0103 #HACK: match `clifford` naming
         #
-        # Select arange all available blades
+        # Select bit-masks for all available blades
         #
         blade_masks = np.arange(1<<self.dims, dtype=BasisBitmaskType)
         # Sort by grades - number of set-bits, which is the number of basis-vectors
@@ -64,7 +66,7 @@ class Cl:
         # Update blade names, add object attributes
         self._add_blades(dtype)
 
-    def _add_blades(self, dtype: np.dtype|None) -> None:
+    def _add_blades(self, dtype: type|None) -> None:
         """Assign blade-names as the object attributes"""
         #
         # Select blade names
@@ -100,11 +102,11 @@ class MVector:
         self.layout = layout
         self.value = value.copy()
 
-    def _to_string(self, *, tol: float=0, round: int|None=None) -> str:
+    def _to_string(self, *, tol: float=0, decimals: int|None=None) -> str:
         """String representation, strips near-zero blades"""
         vals = self.value
-        if round is not None:
-            vals = np.round(vals, round)
+        if decimals is not None:
+            vals = np.round(vals, decimals)
         nz_mask = ~np.isclose(vals, 0, atol=tol)
         if not nz_mask.any():
             return '0'
@@ -114,12 +116,12 @@ class MVector:
         return ' '.join(f'{v:+}*{n}' if n else f'{v:+}' for v, n in zip(vals, names))
 
     def __str__(self) -> str:
-        return self._to_string(round=np.get_printoptions()['precision'])
+        return self._to_string(decimals=np.get_printoptions()['precision'])
 
     def __repr__(self) -> str:
         return self._to_string()
 
-    def _get_other_value(self, other: T_MVector | numbers.Number) -> T_MVector:
+    def _get_other_value(self, other: OtherArg) -> npt.NDArray:
         """Convert values of an operation argument to match ours"""
         # Check if it is scalar
         if isinstance(other, numbers.Number):
@@ -129,7 +131,8 @@ class MVector:
         if self.layout is other.layout:
             return other.value  # The layout is identical
         # Check signature
-        np.testing.assert_array_equal(self.layout.sig, other.layout.sig, 'Multi-vector signatures must match')
+        np.testing.assert_array_equal(self.layout.sig, other.layout.sig,
+                                      'Multi-vector signatures must match')
         return other.value
 
     def __eq__(self, other) -> bool:
@@ -137,21 +140,21 @@ class MVector:
         value = self._get_other_value(other)
         return (self.value == value).all()
 
-    def __add__(self, other: T_MVector) -> T_MVector:
+    def __add__(self, other: OtherArg) -> 'MVector':
         """Left-side addition"""
         value = self._get_other_value(other)
         return MVector(self.layout, self.value + value)
 
     __radd__ = __add__
 
-    def __neg__(self) -> T_MVector:
+    def __neg__(self) -> 'MVector':
         """Negation"""
         return MVector(self.layout, -self.value)
 
-    def __sub__(self, other: T_MVector) -> T_MVector:
+    def __sub__(self, other: OtherArg) -> 'MVector':
         """Left-side subtraction"""
         return self.__add__(-other)
 
-    def __rsub__(self, other: T_MVector) -> T_MVector:
+    def __rsub__(self, other: OtherArg) -> 'MVector':
         """Right-side subtraction"""
         return self.__neg__().__add__(other)

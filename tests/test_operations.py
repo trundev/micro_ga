@@ -18,7 +18,7 @@ def zero_sig(request):
 
 @pytest.fixture
 def layout(pos_sig, neg_sig, zero_sig):
-    return micro_ga.multivector.Cl(pos_sig, neg_sig, zero_sig)
+    return micro_ga.Cl(pos_sig, neg_sig, zero_sig)
 
 @pytest.mark.parametrize('func', [
         operator.add,
@@ -28,6 +28,7 @@ def layout(pos_sig, neg_sig, zero_sig):
         #operator.or_,  # inner product
     ])
 def test_operation(layout, func):
+    """Compare results from arithmetic operations with scalar vs. python integer"""
     # Pick the middle blade
     blade = tuple(layout.blades.values())[layout.gaDims//2]
     assert func(layout.scalar, blade) == func(1, blade)
@@ -35,7 +36,9 @@ def test_operation(layout, func):
 
 @pytest.mark.parametrize('dtype', [np.int32, np.float64, np.complex64, object])
 def test_dtypes(dtype):
-    layout = micro_ga.multivector.Cl(3, dtype=dtype)
+    """Check the internal `numpy` array `dtype` of all blades and in operation result"""
+    layout = micro_ga.Cl(3, dtype=dtype)
+    # Note: `dtype('O') == object`
     assert layout.scalar.value.dtype == dtype, 'Internal numpy array must use requested dtype'
     for blade in layout.blades.values():
         assert blade.value.dtype == dtype
@@ -44,13 +47,17 @@ def test_dtypes(dtype):
     exp = np.result_type(layout.scalar.value.dtype, dtype)
     assert mv.value.dtype == exp, 'Result dtype must come from numpy conversion rules'
 
+    # Check if string representation works
+    _ = repr(layout.scalar)
+
 def test_unbounded_int():
-    # With `object`, numpy falls-back to original python unbounded operation
-    layout = micro_ga.multivector.Cl(2, dtype=object)
+    """Test python unbounded `int` operation"""
+    # With `object`, `numpy` falls-back to original python unbounded operation
+    layout = micro_ga.Cl(2, dtype=object)
     mv = layout.scalar + (1<<100)
     assert (mv.value[0] - (1<<100)) == 1
 
-    # With `int`, numpy uses `int64`, which is 64-bit only
-    layout = micro_ga.multivector.Cl(2, dtype=int)
+    # With `int`, `numpy` uses `int64`, which is 64-bit only
+    layout = micro_ga.Cl(2, dtype=int)
     with pytest.raises(OverflowError):
         mv = layout.scalar + (1<<100)
