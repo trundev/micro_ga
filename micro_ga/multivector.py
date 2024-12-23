@@ -76,10 +76,12 @@ class Cl:
                 np.arange(self.dims) + 1, '').astype(object).sum(-1)
         self.blades = {}
         blade_val = np.empty(shape=self.gaDims, dtype=dtype)
+        # Create 0 and 1 objects of type `dtype`
+        zero, one = (0, 1) if dtype in (None, object) else (dtype(0), dtype(1))
         for idx, n in enumerate(blade_names):
             # Create multi-vector for this blade
-            blade_val[...] = 0
-            blade_val[idx] = 1
+            blade_val[...] = zero
+            blade_val[idx] = one
             blade_mvec = MVector(self, blade_val)
             # Add to `blades` map, the scalar is ''
             name = 'e'+n if n else n
@@ -102,24 +104,37 @@ class MVector:
         self.layout = layout
         self.value = value.copy()
 
-    def _to_string(self, *, tol: float=0, decimals: int|None=None) -> str:
+    def _to_string(self, *, tol: float=0, ndigits: int|None=None) -> str:
         """String representation, strips near-zero blades"""
         vals = self.value
-        if decimals is not None:
-            vals = np.round(vals, decimals)
-        nz_mask = ~np.isclose(vals, 0, atol=tol)
+        if ndigits is not None:
+            vals = round(self, ndigits=ndigits).value
+        nz_mask = np.abs(vals) > tol
         if not nz_mask.any():
             return '0'
         vals = vals[nz_mask]
         names = np.array(tuple(self.layout.blades.keys()))[nz_mask]
+        signs = np.where(vals < 0, '-', '+')
         # Combine individual blades
-        return ' '.join(f'{v:+}*{n}' if n else f'{v:+}' for v, n in zip(vals, names))
+        vals = signs + np.abs(vals).astype(str) + np.where(names, '*', '') + names
+        return ' '.join(vals)
 
     def __str__(self) -> str:
-        return self._to_string(decimals=np.get_printoptions()['precision'])
+        return self._to_string(ndigits=np.get_printoptions()['precision'])
 
     def __repr__(self) -> str:
         return self._to_string()
+
+    def __round__(self, ndigits: int=0) -> 'MVector':
+        """Implement built-in round(), esp. for `dtype=object`"""
+        vals = self.value
+        #HACK: `numpy.round()` crashes if `dtype=object` and underlying object has no `rint` method
+        # But, `round()` does NOT work with complex: "type complex doesn't define __round__ method"
+        if vals.dtype == object:
+            vals = np.vectorize(round, otypes=[type(vals.item(0))])(vals, ndigits=ndigits)
+        else:
+            vals = vals.round(decimals=ndigits)
+        return MVector(self.layout, vals)
 
     def _get_other_value(self, other: OtherArg) -> npt.NDArray:
         """Convert values of an operation argument to match ours"""

@@ -43,3 +43,4 @@ def test_repr():
     assert str(layout.scalar + 1e-12) == '+1.0'
     assert repr(layout.scalar + 1e-12) == '+1.000000000001'
     assert str(layout.scalar - layout.scalar) == '0'
+    assert str(-layout.scalar - layout.I) == '-1.0 -1.0*e123'
