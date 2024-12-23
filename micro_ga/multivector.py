@@ -126,23 +126,27 @@ class MVector:
         # Check if it is scalar
         if isinstance(other, numbers.Number):
             return self.layout.scalar.value * other
-
-        assert isinstance(other, MVector), 'Must be MVector or Number'
+        if not isinstance(other, MVector):
+            return NotImplemented
         if self.layout is other.layout:
             return other.value  # The layout is identical
         # Check signature
-        np.testing.assert_array_equal(self.layout.sig, other.layout.sig,
-                                      'Multi-vector signatures must match')
+        if not (self.layout.sig == other.layout.sig).all():
+            return NotImplemented
         return other.value
 
     def __eq__(self, other) -> bool:
         """Comparison"""
         value = self._get_other_value(other)
+        if value is NotImplemented:
+            return NotImplemented
         return (self.value == value).all()
 
     def __add__(self, other: OtherArg) -> 'MVector':
         """Left-side addition"""
         value = self._get_other_value(other)
+        if value is NotImplemented:
+            return NotImplemented
         return MVector(self.layout, self.value + value)
 
     __radd__ = __add__
