@@ -95,6 +95,19 @@ class Cl:
             if idx == self.gaDims - 1:
                 setattr(self, 'I', blade_mvec)
 
+    def __repr__(self) -> str:
+        """String representation"""
+        dtype_str = self.scalar.subtype.__name__
+        return f'{type(self).__name__}(sig={self.sig.tolist()}, dtype={dtype_str})'
+
+    def __eq__(self, other) -> bool:
+        """Algebra comparison"""
+        if self is other:   # The algebra-objects are often identical
+            return True
+        if not isinstance(other, type(self)):
+            return False
+        return np.array_equal(self.sig, other.sig)
+
 class MVector:
     """Multi-vector representation"""
     layout: Cl
@@ -104,6 +117,16 @@ class MVector:
         assert layout.gaDims == value.size, 'The value and layout signature must match'
         self.layout = layout
         self.value = value.copy()
+
+    @property
+    def subtype(self) -> type:
+        """Type of underlying objects"""
+        # Start with native `numpy` data-type
+        subtype = self.value.dtype.type
+        if subtype == np.object_:
+            # Type of underlying object
+            subtype = type(self.value.item(0))
+        return subtype
 
     def _to_string(self, *, tol: float=0, ndigits: int|None=None) -> str:
         """String representation, strips near-zero blades"""
@@ -144,10 +167,7 @@ class MVector:
             return self.layout.scalar.value * other
         if not isinstance(other, MVector):
             return NotImplemented
-        if self.layout is other.layout:
-            return other.value  # The layout is identical
-        # Check signature
-        if not (self.layout.sig == other.layout.sig).all():
+        if self.layout != other.layout:
             return NotImplemented
         return other.value
 

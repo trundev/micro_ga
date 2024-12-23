@@ -23,6 +23,13 @@ def test_dimensions(pos_sig, neg_sig, zero_sig):
     assert layout.gaDims == 1<<layout.dims
     assert len(layout.blades) == layout.gaDims
 
+def test_null_sig():
+    """Test scalar-only algebra"""
+    test_dimensions(0, 0, 0)
+    layout = micro_ga.Cl(0)
+    assert layout.scalar is layout.I
+    assert layout.blades == {'': layout.scalar}
+
 @pytest.fixture
 def layout(pos_sig, neg_sig, zero_sig):
     return micro_ga.Cl(pos_sig, neg_sig, zero_sig)
@@ -37,9 +44,21 @@ def test_blades(layout):
         assert sum(v.value) == 1 and np.count_nonzero(v.value) == 1, \
                'Blade must have a single value set to 1'
 
+def test_comparison(pos_sig, neg_sig):
+    """Test algebra and multi-vector comparison operators"""
+    layout = micro_ga.Cl(pos_sig, neg_sig)
+    assert layout == micro_ga.Cl(pos_sig, neg_sig)
+    assert layout != 'BAD'
+    assert layout.scalar != 'BAD'
+    # Different layout with different dimensions
+    layout2 = micro_ga.Cl(neg_sig, pos_sig+1)
+    assert layout != layout2
+    assert layout.scalar != layout2.scalar
+
 def test_repr():
     """Test `repr()` and `str()` results"""
     layout = micro_ga.Cl(3)
+    assert str(layout) == f'Cl(sig={[1]*layout.dims}, dtype={np.empty(0).dtype})'
     assert str(layout.scalar + 1e-12) == '+1.0'
     assert repr(layout.scalar + 1e-12) == '+1.000000000001'
     assert str(layout.scalar - layout.scalar) == '0'
