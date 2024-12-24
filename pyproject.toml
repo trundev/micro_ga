@@ -14,7 +14,7 @@ dependencies = ["numpy"]
 
 [project.optional-dependencies]
 # Development deps, installed through `pip install .[dev]`
-dev = ["pytest"]
+dev = ["pytest", "pytest-cov"]
 
 [build-system]
 requires = ["setuptools>=42", "wheel"]

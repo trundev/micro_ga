@@ -1,19 +1,8 @@
 """Test algebra/layout creation"""
 import numpy as np
-import pytest
 import micro_ga
+from . import pos_sig, neg_sig, zero_sig, layout, dtype # pylint: disable=W0611
 
-@pytest.fixture(params=[2, 3])
-def pos_sig(request):
-    return request.param
-
-@pytest.fixture(params=[0, 1])
-def neg_sig(request):
-    return request.param
-
-@pytest.fixture(params=[0, 1])
-def zero_sig(request):
-    return request.param
 
 def test_dimensions(pos_sig, neg_sig, zero_sig):
     """Test signature vs. dimensions, blade number"""
@@ -29,10 +18,6 @@ def test_null_sig():
     layout = micro_ga.Cl(0)
     assert layout.scalar is layout.I
     assert layout.blades == {'': layout.scalar}
-
-@pytest.fixture
-def layout(pos_sig, neg_sig, zero_sig):
-    return micro_ga.Cl(pos_sig, neg_sig, zero_sig)
 
 def test_blades(layout):
     """Test blade names"""

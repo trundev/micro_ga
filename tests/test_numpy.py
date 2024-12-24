@@ -1,11 +1,17 @@
 """Test `numpy` array integration"""
-import numpy as np
 import pytest
-import micro_ga
+import numpy as np
+from . import pos_sig, layout   # pylint: disable=W0611
 
-@pytest.fixture(params=[2,3])
-def layout(request):
-    return micro_ga.Cl(request.param)
+@pytest.fixture
+def neg_sig():
+    """Skip tests with basis-vectors of negative signature"""
+    return 0
+
+@pytest.fixture
+def zero_sig():
+    """Skip tests with basis-vectors of zero signature"""
+    return 0
 
 def test_ndarray(layout):
     """Test integration with `numpy.ndarray`"""

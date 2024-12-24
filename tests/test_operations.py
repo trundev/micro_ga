@@ -1,36 +1,18 @@
 """Test arithmetic operations"""
-import operator
-import fractions
-import decimal
 import numpy as np
 import pytest
 import micro_ga
-
-@pytest.fixture(params=[2, 3])
-def pos_sig(request):
-    return request.param
-
-@pytest.fixture(params=[0, 1])
-def neg_sig(request):
-    return request.param
-
-@pytest.fixture(params=[0, 1])
-def zero_sig(request):
-    return request.param
+from . import pos_sig, layout, operation, dtype # pylint: disable=W0611
 
 @pytest.fixture
-def layout(pos_sig, neg_sig, zero_sig):
-    return micro_ga.Cl(pos_sig, neg_sig, zero_sig)
+def neg_sig():
+    """Skip tests with basis-vectors of negative signature"""
+    return 0
 
-@pytest.fixture(params=[
-        operator.add,
-        operator.sub,
-        #operator.mul,
-        #operator.xor,  # outer product
-        #operator.or_,  # inner product
-    ])
-def operation(request):
-    return request.param
+@pytest.fixture
+def zero_sig():
+    """Skip tests with basis-vectors of zero signature"""
+    return 0
 
 def test_operation(layout, operation):
     """Compare results from arithmetic operations with scalar vs. python integer"""
@@ -43,11 +25,6 @@ def test_operation(layout, operation):
         _ = operation(blade, None)
     with pytest.raises(TypeError):
         _ = operation(None, blade)
-
-@pytest.fixture(params=[ np.int32, np.float64, np.complex64, object,
-                         fractions.Fraction, decimal.Decimal])
-def dtype(request):
-    return request.param
 
 def test_blade_dtype(dtype):
     """Check the internal `numpy` array `dtype` of all blades"""
