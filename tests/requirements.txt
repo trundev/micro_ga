@@ -1,0 +1,6 @@
+# We need the latest clifford module version, instead of
+# v1.4.0 from pypi.org (it only works on python upto 3.11)
+# After this is fixed, the line below must be moved to
+# pyproject.toml / [project.optional-dependencies]
+git+https://github.com/pygae/clifford
+numba>=0.61.0rc2    #HACK: Latest release 0.60 does not support py 3.13
