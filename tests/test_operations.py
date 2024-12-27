@@ -64,3 +64,15 @@ def test_unbounded_int():
     layout = micro_ga.Cl(2, dtype=int)
     with pytest.raises(OverflowError):
         mv = layout.scalar + (1<<100)
+
+def test_round(dtype):
+    """Test `round` operation"""
+    layout = micro_ga.Cl(2, dtype=dtype)
+    if dtype is object:
+        exp_dtype = int         # Default `micro_ga` type
+    else:
+        exp_dtype = dtype
+    # Pick a convenient number, which after rounding has finite binary representation
+    val = exp_dtype(1.2456) + layout.I
+    val = round(val, 2)
+    assert val == exp_dtype(1.25) + layout.I

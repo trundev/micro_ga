@@ -1,4 +1,5 @@
 """Test algebra/layout creation"""
+from typing import Any
 import numpy as np
 import micro_ga
 from . import pos_sig, neg_sig, zero_sig, layout, dtype # pylint: disable=W0611
@@ -40,11 +41,21 @@ def test_comparison(pos_sig, neg_sig):
     assert layout != layout2
     assert layout.scalar != layout2.scalar
 
-def test_repr():
+def test_repr(dtype):
     """Test `repr()` and `str()` results"""
-    layout = micro_ga.Cl(3)
-    assert str(layout) == f'Cl(sig={[1]*layout.dims}, dtype={np.empty(0).dtype})'
-    assert str(layout.scalar + 1e-12) == '+1.0'
-    assert repr(layout.scalar + 1e-12) == '+1.000000000001'
+    layout = micro_ga.Cl(3, dtype=dtype)
+    if dtype is object:
+        exp_dtype = int         # Default `micro_ga` type
+    else:
+        exp_dtype = dtype
+    # Algebra representation
+    assert str(layout) == f'Cl(sig={[1]*layout.dims}, dtype={exp_dtype.__name__})'
+    # Basic multi-vector representations
+    py_type = exp_dtype
+    if issubclass(py_type, np.number):
+        # String representation works on python type, but not on `numpy` type
+        py_type: Any = type(np.zeros(1, dtype=dtype).item(0))
+    assert str(layout.scalar) == f'{py_type(1)}'
     assert str(layout.scalar - layout.scalar) == '0'
-    assert str(-layout.scalar - layout.I) == '-1.0 -1.0*e123'
+    assert str(-layout.scalar + layout.I) == f'{py_type(-1)} + {py_type(1)}*e123'
+    assert repr(-layout.scalar + layout.I) == f'MVector({py_type(-1)!r} + {py_type(1)!r}*e123)'

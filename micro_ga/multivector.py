@@ -1,6 +1,6 @@
 """Geometric algebra multi-vector basic implementation"""
 import numbers
-from typing import Union
+from typing import Union, Callable
 import numpy as np
 import numpy.typing as npt
 
@@ -128,26 +128,35 @@ class MVector:
             subtype = type(self.value.item(0))
         return subtype
 
-    def _to_string(self, *, tol: float=0, ndigits: int|None=None) -> str:
+    def _to_string(self, str_fn: Callable, *, tol: float=0, mult_sym='*') -> str:
         """String representation, strips near-zero blades"""
         vals = self.value
-        if ndigits is not None:
-            vals = round(self, ndigits=ndigits).value
         nz_mask = np.abs(vals) > tol
         if not nz_mask.any():
             return '0'
         vals = vals[nz_mask]
-        names = np.array(tuple(self.layout.blades.keys()))[nz_mask]
-        signs = np.where(vals < 0, '-', '+')
-        # Combine individual blades
-        vals = signs + np.abs(vals).astype(str) + np.where(names, '*', '') + names
-        return ' '.join(vals)
+
+        # Start with strings to join blades (`object` is to allow `+=`)
+        el_strs = np.full(vals.shape, ' + ', dtype=object)
+        el_strs[0] = ''
+        if issubclass(self.subtype, (int, float, np.integer, np.floating)):
+            # Only primitive scalar types are joined using their sign
+            el_strs[1:][vals[1:] < 0] = ' - '
+            vals[1:] = abs(vals[1:])
+
+        # Convert each coefficient to string using `str_fn`
+        el_strs += np.vectorize(str_fn, otypes=[str])(vals)
+
+        # Add blade-names
+        blade_strs = np.array(tuple(self.layout.blades.keys()))[nz_mask]
+        el_strs += np.where(blade_strs, mult_sym, '') + blade_strs
+        return el_strs.sum()
 
     def __str__(self) -> str:
-        return self._to_string(ndigits=np.get_printoptions()['precision'])
+        return self._to_string(str)
 
     def __repr__(self) -> str:
-        return self._to_string()
+        return f'{type(self).__name__}({self._to_string(repr)})'
 
     def __round__(self, ndigits: int=0) -> 'MVector':
         """Implement built-in round(), esp. for `dtype=object`"""
