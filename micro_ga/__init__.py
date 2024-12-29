@@ -1,5 +1,6 @@
 """Minimal/generic geometric algebra implementation"""
-from .multivector import Cl, MVector
+from .layout import Cl
+from .multivector import MVector
 
 __version__ = "0.0.1.dev0"
 
