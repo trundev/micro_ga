@@ -39,13 +39,13 @@ class Cl:
     gaDims: int
     # Blade-name to multi-vector map
     blades: dict[str, 'MVector']
+    # Individual blades, also include 'e1', 'e2', etc.
+    scalar: 'MVector'
+    I: 'MVector'
     #
     # Bit-masks for basis-vectors in each multi-vector blade
     #
     _blade_basis_masks: npt.NDArray[BasisBitmaskType]
-    # Individual blades, also include 'e1', 'e2', etc.
-    scalar: 'MVector'
-    I: 'MVector'
 
     def __init__(self, pos_sig: int, neg_sig: int=0, zero_sig: int=0, *,
                  dtype: type|None=None) -> None:
@@ -60,8 +60,9 @@ class Cl:
         blade_masks = np.arange(1<<self.dims, dtype=BasisBitmaskType)
         # Sort by grades - number of set-bits, which is the number of basis-vectors
         # like: 000b; 001b, 010b, 100b; 011b, 101b, 110b; 111b
-        argsort = np.argsort(np.bitwise_count(blade_masks), stable=True)
-        blade_masks = blade_masks[argsort]
+        # Then, by the smallest basis vector: `e14` (mask 9) is before `e23` (mask 6)
+        argsort = np.lexsort(list(-(blade_masks & 1<<np.arange(self.dims)[:, np.newaxis]))[::-1]
+                             + [np.bitwise_count(blade_masks)])
         self._blade_basis_masks = blade_masks[argsort]
         # Update blade names, add object attributes
         self._add_blades(dtype)
@@ -84,8 +85,8 @@ class Cl:
             blade_val[idx] = one
             blade_mvec = MVector(self, blade_val)
             # Add to `blades` map, the scalar is ''
-            name = 'e'+n if n else n
-            self.blades['e'+n if n else n] = blade_mvec
+            name = 'e'+n if n else ''
+            self.blades[name] = blade_mvec
             # Add it as object attribute, the scalar is 'scalar'
             if name == '':
                 name = 'scalar'
@@ -131,7 +132,7 @@ class MVector:
         #HACK: `numpy.round()` crashes if `dtype=object` and underlying object has no `rint` method
         # But, `round()` does NOT work with complex: "type complex doesn't define __round__ method"
         if vals.dtype == object:
-            vals = np.vectorize(round, otypes=[type(vals.item(0))])(vals, ndigits=ndigits)
+            vals = np.vectorize(round, otypes=[object])(vals, ndigits=ndigits)
         else:
             vals = vals.round(decimals=ndigits)
         return MVector(self.layout, vals)
@@ -151,7 +152,7 @@ class MVector:
         return other.value
 
     def __eq__(self, other) -> bool:
-        """Comparison"""
+        """Multi-vector comparison"""
         value = self._get_other_value(other)
         if value is NotImplemented:
             return NotImplemented
