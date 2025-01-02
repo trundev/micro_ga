@@ -2,6 +2,8 @@
 import pytest
 import numpy as np
 from . import pos_sig, layout   # pylint: disable=W0611
+# pylint: disable=W0621
+
 
 @pytest.fixture
 def neg_sig():

@@ -3,6 +3,8 @@ import numpy as np
 import pytest
 import micro_ga
 from . import pos_sig, layout, operation, dtype # pylint: disable=W0611
+# pylint: disable=W0621
+
 
 @pytest.fixture
 def neg_sig():
@@ -36,6 +38,7 @@ def test_blade_dtype(dtype):
     # Check type of individual values from the scalar-blade
     exp_t = int if dtype is object else dtype
     for v in layout.scalar.value:
+        # pylint: disable=C0123     # Here we expect exactly the same type
         assert type(v) is exp_t, 'Individual values must be of requested type'
 
     # Check if both string representations work
@@ -51,6 +54,7 @@ def test_operation_dtype(operation, dtype):
     # Check type of individual values
     exp_t = int if dtype is object else dtype
     for v in mv.value:
+        # pylint: disable=C0123     # Here we expect exactly the same type
         assert type(v) is exp_t, 'Individual values of result must be of requested type'
 
 def test_unbounded_int():

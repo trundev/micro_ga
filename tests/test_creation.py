@@ -3,6 +3,7 @@ from typing import Any
 import numpy as np
 import micro_ga
 from . import pos_sig, neg_sig, zero_sig, layout, dtype # pylint: disable=W0611
+# pylint: disable=W0621
 
 
 def test_dimensions(pos_sig, neg_sig, zero_sig):

@@ -7,6 +7,7 @@ import pytest
 import micro_ga
 
 
+# pylint: disable=W0621
 @pytest.fixture
 def rng():
     """Random number generator fixture"""
