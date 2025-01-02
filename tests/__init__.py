@@ -2,6 +2,8 @@
 import operator
 import fractions
 import decimal
+import enum
+from typing import Iterator
 import numpy as np
 import pytest
 import micro_ga
@@ -14,6 +16,9 @@ def rng():
     default_test_seed = 1  # the default seed to start pseudo-random tests
     return np.random.default_rng(default_test_seed)
 
+#
+# Layout related fixtures
+#
 @pytest.fixture(params=[2, 3])
 def pos_sig(request):
     """Number of basis-vectors with positive signature fixture"""
@@ -34,6 +39,9 @@ def layout(pos_sig, neg_sig, zero_sig):     # pylint: disable=W0621
     """Geometric algebra object fixture"""
     return micro_ga.Cl(pos_sig, neg_sig, zero_sig)
 
+#
+# Arithmetic operation / `dtype` related fixtures
+#
 @pytest.fixture(params=[ np.int32, np.float64, np.complex64, object,
                          fractions.Fraction, decimal.Decimal])
 def dtype(request):
@@ -50,3 +58,59 @@ def dtype(request):
 def operation(request):
     """Arithmetic operation fixture"""
     return request.param
+
+#
+# Random multi-vector generators to test various operations
+#
+class MVType(enum.Enum):
+    """Multi-vector types"""
+    GRADE = enum.auto()     # Multi-vector of single grade
+    VERSOR = enum.auto()    # A `versor` multi-vector (product of pure-vectors)
+    GEN = enum.auto()       # Generic multi-vector (random coefficients)
+
+def rng_mvector(rng, blades):
+    """Random multi-vector from given blades"""
+    # Use prime numbers as multi-vector coefficients
+    prime_nums = [2, 3, 5, 7, 11, 13, 17, 19, 23, 29,
+                  31, 37, 41, 43, 47, 53, 59, 61, 67, 71]
+    return (blades * rng.choice(prime_nums, blades.size)).sum()
+
+@pytest.fixture(params=list(MVType), ids=list(t.name for t in MVType))
+def mvector_gen(request, rng):
+    """Generator to return multi-vectors of specific type / layout"""
+    mv_type = request.param
+    def iterator(layout: micro_ga.Cl) -> Iterator[micro_ga.MVector]:
+        grades = layout.gradeList
+        # Useful `ndarray` of all blades
+        blade_vals = np.fromiter((blade for blade in layout.blades.values()),
+                                 dtype=micro_ga.MVector)
+        match mv_type:
+            case MVType.GRADE:
+                # Yield multi-vectors of each grade
+                for grade in range(layout.dims + 1):
+                    blades = blade_vals[grades == grade]
+                    yield rng_mvector(rng, blades)
+            case MVType.VERSOR:
+                blades = blade_vals[grades == 1]
+                # Multiply some of random pure-vectors
+                # (max grade of the result increases from vector to pseudo-scalar)
+                for num in range(1, layout.dims + 1):
+                    res = layout.scalar
+                    for _ in range(num):
+                        res = res * rng_mvector(rng, blades)
+                    yield res
+            case MVType.GEN:
+                # Single generic multi-vector of random coefficients
+                yield rng_mvector(rng, blade_vals)
+            case _:
+                assert False, 'Unsupported multi-vector type'
+    return iterator
+
+@pytest.fixture
+def mvector_2_gen(mvector_gen):
+    """Generator to return pairs of multi-vectors of specific type / layout"""
+    def iterator(layout: micro_ga.Cl) -> Iterator[tuple[micro_ga.MVector, micro_ga.MVector]]:
+        for l_vals in mvector_gen(layout):
+            for r_vals in mvector_gen(layout):
+                yield l_vals, r_vals
+    return iterator
