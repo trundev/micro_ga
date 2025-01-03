@@ -42,8 +42,7 @@ class Cl:
     #
     _blade_basis_masks: npt.NDArray[BasisBitmaskType]
 
-    def __init__(self, pos_sig: int, neg_sig: int=0, zero_sig: int=0, *,
-                 dtype: type|None=None) -> None:
+    def __init__(self, pos_sig: int, neg_sig: int=0, zero_sig: int=0) -> None:
         # Build signature
         self.sig = np.array([0] * zero_sig + [1] * pos_sig + [-1] * neg_sig,
                             dtype=SigType)
@@ -59,9 +58,9 @@ class Cl:
                              + [np.bitwise_count(blade_masks)])
         self._blade_basis_masks = blade_masks[argsort]
         # Update blade names, add object attributes
-        self._add_blades(dtype)
+        self._add_blades()
 
-    def _add_blades(self, dtype: type|None) -> None:
+    def _add_blades(self) -> None:
         """Assign blade-names as the object attributes"""
         #
         # Select blade names
@@ -70,13 +69,12 @@ class Cl:
                 self._blade_basis_masks[:, np.newaxis] & 1<<np.arange(self.dims),
                 np.arange(self.dims) + 1, '').astype(object).sum(-1)
         self.blades = {}
-        blade_val = np.empty(blade_names.size, dtype=dtype)
-        # Create 0 and 1 objects of type `dtype`
-        zero, one = (0, 1) if dtype in (None, object) else (dtype(0), dtype(1))
+        # Create blade array of `dtype` minimal integer
+        blade_val = np.empty(blade_names.size, dtype=SigType)
         for idx, n in enumerate(blade_names):
             # Create multi-vector for this blade
-            blade_val[...] = zero
-            blade_val[idx] = one
+            blade_val[...] = 0
+            blade_val[idx] = 1
             blade_mvec = self.mvector(blade_val)
             # Add to `blades` map, the scalar is ''
             name = 'e'+n if n else ''
@@ -105,8 +103,7 @@ class Cl:
 
     def __repr__(self) -> str:
         """String representation"""
-        dtype_str = self.scalar.subtype.__name__
-        return f'{type(self).__name__}(sig={self.sig.tolist()}, dtype={dtype_str})'
+        return f'{type(self).__name__}(sig={self.sig.tolist()})'
 
     def __eq__(self, other) -> bool:
         """Algebra comparison"""
