@@ -1,4 +1,5 @@
 """Test algebra/layout creation"""
+import math
 from typing import Any
 import numpy as np
 import micro_ga
@@ -13,6 +14,11 @@ def test_dimensions(pos_sig, neg_sig, zero_sig):
     assert layout.dims == layout.sig.size
     assert layout.gaDims == 1<<layout.dims
     assert len(layout.blades) == layout.gaDims
+    # Combine expected grades for all blades
+    exp_grades = []
+    for g in range(layout.dims + 1):
+        exp_grades.extend([g]*math.comb(layout.dims, g))
+    np.testing.assert_equal(layout.gradeList, exp_grades, 'Unexpected gradeList content')
 
 def test_null_sig():
     """Test scalar-only algebra"""
@@ -37,6 +43,8 @@ def test_comparison(pos_sig, neg_sig):
     assert layout == micro_ga.Cl(pos_sig, neg_sig)
     assert layout != 'BAD'
     assert layout.scalar != 'BAD'
+    # Scalar-blade with multi-vector from a scalar-value
+    assert layout.scalar == layout.mvector(1)
     # Different layout with different dimensions
     layout2 = micro_ga.Cl(neg_sig, pos_sig+1)
     assert layout != layout2
